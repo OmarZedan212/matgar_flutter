@@ -1,4 +1,5 @@
 import '../models/product.dart';
+import '../models/product_details.dart';
 import 'api_client.dart';
 
 class ProductService {
@@ -23,5 +24,11 @@ class ProductService {
         .whereType<Map<String, dynamic>>()
         .map(Product.fromJson)
         .toList(growable: false);
+  }
+
+  Future<ProductDetails> fetchProduct(int productId) async {
+    final response = await _client.get('/products/$productId');
+
+    return ProductDetails.fromJson(response as Map<String, dynamic>);
   }
 }

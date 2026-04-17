@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
-import 'data/sample_products.dart';
 import 'screens/account_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/orders_screen.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
+import 'services/cart_service.dart';
+import 'services/order_service.dart';
 import 'services/product_service.dart';
 import 'state/cart_controller.dart';
 import 'state/session_controller.dart';
@@ -21,11 +23,16 @@ class _MatgarAppState extends State<MatgarApp> {
   late final ApiClient apiClient = ApiClient();
   late final ProductService productService = ProductService(apiClient);
   late final AuthService authService = AuthService(apiClient);
+  late final CartService cartService = CartService(apiClient);
+  late final OrderService orderService = OrderService(apiClient);
   late final SessionController session = SessionController(
     apiClient: apiClient,
     authService: authService,
   );
-  late final CartController cart = CartController();
+  late final CartController cart = CartController(
+    cartService: cartService,
+    session: session,
+  );
 
   @override
   void dispose() {
@@ -37,7 +44,9 @@ class _MatgarAppState extends State<MatgarApp> {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xff00796b);
+    const primary = Color(0xff3b82f6);
+    const background = Color(0xfff4f9fc);
+    const black = Color(0xff000000);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -45,15 +54,39 @@ class _MatgarAppState extends State<MatgarApp> {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: seed,
+          seedColor: primary,
           brightness: Brightness.light,
+        ).copyWith(
+          primary: primary,
+          onPrimary: Colors.white,
+          surface: Colors.white,
+          onSurface: black,
+          primaryContainer: background,
+          onPrimaryContainer: black,
         ),
-        scaffoldBackgroundColor: const Color(0xfff7f8fa),
-        appBarTheme: const AppBarTheme(centerTitle: false),
+        scaffoldBackgroundColor: background,
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          backgroundColor: background,
+          foregroundColor: black,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: primary.withOpacity(0.12),
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: primary.withOpacity(0.12)),
+          ),
+        ),
       ),
       home: MatgarShell(
         cart: cart,
         productService: productService,
+        orderService: orderService,
         session: session,
       ),
     );
@@ -65,11 +98,13 @@ class MatgarShell extends StatefulWidget {
     super.key,
     required this.cart,
     required this.productService,
+    required this.orderService,
     required this.session,
   });
 
   final CartController cart;
   final ProductService productService;
+  final OrderService orderService;
   final SessionController session;
 
   @override
@@ -83,11 +118,14 @@ class _MatgarShellState extends State<MatgarShell> {
   Widget build(BuildContext context) {
     final pages = [
       HomeScreen(
-        initialProducts: sampleProducts,
         productService: widget.productService,
         cart: widget.cart,
       ),
       CartScreen(cart: widget.cart),
+      OrdersScreen(
+        orderService: widget.orderService,
+        session: widget.session,
+      ),
       AccountScreen(session: widget.session),
     ];
 
@@ -119,6 +157,11 @@ class _MatgarShellState extends State<MatgarShell> {
                   child: const Icon(Icons.shopping_bag),
                 ),
                 label: 'Cart',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long),
+                label: 'Orders',
               ),
               const NavigationDestination(
                 icon: Icon(Icons.person_outline),

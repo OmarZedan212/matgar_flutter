@@ -83,11 +83,6 @@ class _AccountScreenState extends State<AccountScreen> {
                 title: Text('Addresses'),
                 subtitle: Text('Manage delivery information'),
               ),
-              const ListTile(
-                leading: Icon(Icons.support_agent_outlined),
-                title: Text('Support'),
-                subtitle: Text('Contact the store team'),
-              ),
             ],
           );
         },

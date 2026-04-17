@@ -7,11 +7,13 @@ class ProductCard extends StatelessWidget {
     super.key,
     required this.product,
     required this.onAddToCart,
+    this.onOpen,
     this.isCompact = false,
   });
 
   final Product product;
   final VoidCallback onAddToCart;
+  final VoidCallback? onOpen;
   final bool isCompact;
 
   @override
@@ -20,17 +22,20 @@ class ProductCard extends StatelessWidget {
       return Card(
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
-        child: Row(
-          children: [
-            _ProductImage(product: product, width: 112, height: 112),
-            Expanded(child: _ProductInfo(product: product)),
-            IconButton.filledTonal(
-              tooltip: 'Add to cart',
-              onPressed: onAddToCart,
-              icon: const Icon(Icons.add_shopping_cart),
-            ),
-            const SizedBox(width: 12),
-          ],
+        child: InkWell(
+          onTap: onOpen,
+          child: Row(
+            children: [
+              _ProductImage(product: product, width: 112, height: 112),
+              Expanded(child: _ProductInfo(product: product)),
+              IconButton.filledTonal(
+                tooltip: 'Add to cart',
+                onPressed: onAddToCart,
+                icon: const Icon(Icons.add_shopping_cart),
+              ),
+              const SizedBox(width: 12),
+            ],
+          ),
         ),
       );
     }
@@ -38,23 +43,26 @@ class ProductCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _ProductImage(product: product, height: 130),
-          Expanded(child: _ProductInfo(product: product)),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.tonalIcon(
-                onPressed: onAddToCart,
-                icon: const Icon(Icons.add_shopping_cart),
-                label: const Text('Add'),
+      child: InkWell(
+        onTap: onOpen,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ProductImage(product: product, height: 130),
+            Expanded(child: _ProductInfo(product: product)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: onAddToCart,
+                  icon: const Icon(Icons.add_shopping_cart),
+                  label: const Text('Add'),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -147,7 +155,7 @@ class _ProductInfo extends StatelessWidget {
             ),
           ),
         ],
-      )
+      ),
     );
   }
 }

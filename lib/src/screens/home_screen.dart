@@ -3,17 +3,16 @@ import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../state/cart_controller.dart';
+import 'product_detail_screen.dart';
 import '../widgets/product_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
-    required this.initialProducts,
     required this.productService,
     required this.cart,
   });
 
-  final List<Product> initialProducts;
   final ProductService productService;
   final CartController cart;
 
@@ -22,7 +21,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late List<Product> products = widget.initialProducts;
+  List<Product> products = const [];
   bool isLoading = false;
   String? errorMessage;
 
@@ -48,9 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       setState(() {
-        products = remoteProducts.isEmpty
-            ? widget.initialProducts
-            : remoteProducts;
+        products = remoteProducts;
       });
     } catch (_) {
       if (!mounted) {
@@ -58,14 +55,42 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       setState(() {
-        products = widget.initialProducts;
-        errorMessage = 'Using sample products until the Laravel API is reachable.';
+        products = const [];
+        errorMessage = 'Could not load products from the Laravel API.';
       });
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
       }
     }
+  }
+
+  Future<void> _addToCart(Product product) async {
+    final added = await widget.cart.add(product);
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          added ? 'Added to cart.' : widget.cart.errorMessage ?? 'Could not add to cart.',
+        ),
+      ),
+    );
+  }
+
+  void _openProduct(Product product) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProductDetailScreen(
+          initialProduct: product,
+          productService: widget.productService,
+          cart: widget.cart,
+        ),
+      ),
+    );
   }
 
   @override
@@ -78,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return CustomScrollView(
       slivers: [
         SliverAppBar.large(
-          title: const Text('Matgar'),
+          title: const _MatgarTitle(),
           actions: [
             IconButton(
               tooltip: 'Refresh products',
@@ -91,37 +116,39 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           sliver: SliverList.list(
             children: [
-              const _HeroBanner(),
-              const SizedBox(height: 16),
               if (isLoading) const LinearProgressIndicator(),
               if (errorMessage != null) ...[
                 const SizedBox(height: 12),
                 _ApiNotice(message: errorMessage!),
               ],
-              const SizedBox(height: 24),
-              Text(
-                'Featured products',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 300,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: visibleFeatured.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final product = visibleFeatured[index];
-                    return SizedBox(
-                      width: 220,
-                      child: ProductCard(
-                        product: product,
-                        onAddToCart: () => widget.cart.add(product),
-                      ),
-                    );
-                  },
+              if (products.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Text(
+                  'Featured products',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-              ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 300,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: visibleFeatured.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final product = visibleFeatured[index];
+
+                      return SizedBox(
+                        width: 220,
+                        child: ProductCard(
+                          product: product,
+                          onOpen: () => _openProduct(product),
+                          onAddToCart: () => _addToCart(product),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -138,16 +165,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              ...products.map(
-                (product) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: ProductCard(
-                    product: product,
-                    isCompact: true,
-                    onAddToCart: () => widget.cart.add(product),
+              if (!isLoading && products.isEmpty)
+                const _EmptyProducts()
+              else
+                ...products.map(
+                  (product) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ProductCard(
+                      product: product,
+                      isCompact: true,
+                      onOpen: () => _openProduct(product),
+                      onAddToCart: () => _addToCart(product),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -156,39 +187,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HeroBanner extends StatelessWidget {
-  const _HeroBanner();
+class _MatgarTitle extends StatelessWidget {
+  const _MatgarTitle();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Fresh picks for your store',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(
+          'assets/images/logo_matgar.png',
+          width: 50,
+          height: 50,
+          fit: BoxFit.contain,
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'Matgar',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xff0f172a),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Connect your Laravel products, customers, carts, and orders.',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.shopping_cart_checkout),
-            label: const Text('Start shopping'),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -208,6 +229,36 @@ class _ApiNotice extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Text(message),
+      ),
+    );
+  }
+}
+
+class _EmptyProducts extends StatelessWidget {
+  const _EmptyProducts();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 64,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No products yet',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Products from the Laravel API will appear here.',
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
